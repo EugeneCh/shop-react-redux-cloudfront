@@ -9,7 +9,11 @@ export function useAvailableProducts() {
     "available-products",
     async () => {
       const res = await axios.get<AvailableProduct[]>(
-        `${API_PATHS.bff}/product/available`
+        `${API_PATHS.bff}/products`, {
+          headers: {
+            "Ocp-Apim-Subscription-Key": "9f9d571b49de4c16a3d01c945d03611a"
+          }
+        }
       );
       return res.data;
     }
@@ -29,7 +33,11 @@ export function useAvailableProduct(id?: string) {
     ["product", { id }],
     async () => {
       const res = await axios.get<AvailableProduct>(
-        `${API_PATHS.bff}/product/${id}`
+        `${API_PATHS.bff}/products/${id}`, {
+          headers: {
+            "Ocp-Apim-Subscription-Key": "9f9d571b49de4c16a3d01c945d03611a"
+          }
+        }
       );
       return res.data;
     },
