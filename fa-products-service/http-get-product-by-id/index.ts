@@ -1,8 +1,23 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
-import { products, Product } from "../mocks/data";
+import { CosmosClient } from "@azure/cosmos";
+
+// Create DB connection
+const endpoint  = process.env.COSMOS_ENDPOINT;
+const key = process.env.COSMOS_KEY;
+const databaseId = 'test-db';
+const productContainerId = 'products';
+const stockContainerId = 'stocks';
+
+const dbClient = new CosmosClient({ endpoint, key });
+
+const database = dbClient.database(databaseId);
+const productContainer = database.container(productContainerId);
+const stockContainer = database.container(stockContainerId);
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
     const id = req.params.id;
+
+    context.log(`product id ${id} to find`);
 
     if (!id) {
         context.res = {
@@ -12,20 +27,37 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
         return;
     }
 
-    const product: Product = products.find(product => product.id === id);
+    try {
+        const { resource: product } = await productContainer.item(id, id).read();
 
-    if (!product) {
+        if (!product) {
+            context.res = {
+                status: 404,
+                body: "Product not found"
+            };
+            return;
+        }
+
+        const { resources: [stock] } = await stockContainer.items.query(`SELECT * FROM c WHERE c.product_id = "${id}"`).fetchAll();
+
+        if (!stock) {
+            context.res = {
+                status: 404,
+                body: "Stock not found for product"
+            };
+            return;
+        }
+
         context.res = {
-            statusCode: 404,
-            body: `Item with id ${id} not found, please provide a valid id.`
+            status: 200,
+            body: { ...product, count: stock.count }
         };
-        return;
+    } catch (err) {
+        context.res = {
+            status: 500,
+            body: "Error fetching product: " + err.message
+        };
     }
-
-    context.res = {
-        // status: 200, /* Defaults to 200 */
-        body: product
-    };
 
 };
 
